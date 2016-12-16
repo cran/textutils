@@ -1,0 +1,19 @@
+## exportPattern("^[[:alpha:]]+")
+export(
+    HTMLdecode,
+    TeXunits,
+    btable,
+    latexrule,
+    rmrp,
+    spaces,
+    strexp,
+    toHTML,
+    toText,
+    trim,
+    valign
+)
+S3method(print, text)
+S3method(toHTML, text)
+S3method(toText, default)
+
+importFrom("utils", "capture.output")
