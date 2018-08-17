@@ -1,12 +1,12 @@
-RUNIT TEST PROTOCOL -- Fri Dec 16 23:31:54 2016 
+RUNIT TEST PROTOCOL -- Mon Jun 25 10:51:19 2018 
 *********************************************** 
-Number of test functions: 3 
+Number of test functions: 4 
 Number of errors: 0 
 Number of failures: 0 
 
  
 1 Test Suite : 
-textutils - 3 test functions, 0 errors, 0 failures
+textutils - 4 test functions, 0 errors, 0 failures
 
 
 
@@ -18,7 +18,8 @@ Test file regexp: ut_.*[^~]$
 Involved directory: 
 ~/Packages/textutils/inst/unitTests 
 --------------------------- 
-Test file: /home/es/Packages/textutils/inst/unitTests/ut_text.R 
+Test file: C:\Users\Scen1/Packages/textutils/inst/unitTests/ut_text.R 
 test.spaces: (1 checks) ... OK (0 seconds)
 test.strexp: (2 checks) ... OK (0 seconds)
 test.TeXunits: (2 checks) ... OK (0 seconds)
+test.toHTML: (0 checks) ... OK (0 seconds)

@@ -1,6 +1,26 @@
+v0.1-9  (2018-08-16)
+
+  o new function 'fill_in'
+
+  o new function 'title_case'
+
+  o new function 'TeXencode'
+
+v0.1-8  (2017-06-21)
+
+  o new method 'toHTML.data.frame'
+
+v0.1-7  (2017-03-30)
+
+  o small update in vignette
+
+v0.1-6  (2016-12-16)
+
+  o CRAN release
+
 v0.1-5  (2016-12-16)
   
-  o Functions 'char2num' and 'expstr' are removed (for
+  o functions 'char2num' and 'expstr' are removed (for
     the latter, use 'strexp' instead)
 
 v0.1-4  (2016-11-28)

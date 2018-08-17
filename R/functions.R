@@ -1,6 +1,6 @@
 ## -*- truncate-lines: t; -*-
 
-toText <- function(x, ...) 
+toText <- function(x, ...)
     UseMethod("toText")
 
 
@@ -30,6 +30,52 @@ toHTML.text <- function(x, ...){
     c("<pre>", ans, "</pre>")
 }
 
+toHTML.data.frame <- function(x, ...,
+                              row.names = FALSE,
+                              class.handlers = list(),
+                              col.handlers = list()) {
+
+    dfnames <- names(x)
+    if (any(i <- names(col.handlers) %in% dfnames)) {
+        elt <- which(i)
+        for (e in elt)
+            x[[ names(col.handlers)[e] ]] <- col.handlers[[e]](x[[ names(col.handlers)[e] ]])
+    }
+    cl <- sapply(x, class)
+    for (j in seq_len(ncol(x))) {
+        if (dfnames[j] %in% names(col.handlers))
+            next
+        if (cl[j] %in% names(class.handlers))
+            x[[j]] <- class.handlers[[ cl[j] ]](x[[j]])
+    }
+    ans <- rbind(paste0("<th>", c(if (row.names) "", colnames(x)), "</th>"),
+                 cbind(if (row.names) paste0("<td>", row.names(x), "</td>"),
+                       apply(x, 2, function(x) paste0("<td>", x, "</td>"))))
+    
+    paste("<tr>", apply(ans, 1, paste, collapse = ""), "</tr>")
+}
+
+toLatex.data.frame <- function(object, ...,
+                               row.names = FALSE,
+                               class.handlers = list(),
+                               col.handlers = list()) {
+
+    dfnames <- names(object)
+    if (any(i <- names(col.handlers) %in% dfnames)) {
+        elt <- which(i)
+        for (e in elt)
+            object[[ names(col.handlers)[e] ]] <-
+                col.handlers[[e]](object[[ names(col.handlers)[e] ]])
+    }
+    cl <- sapply(object, class)
+    for (j in seq_len(ncol(object))) {
+        if (dfnames[j] %in% names(col.handlers))
+            next
+        if (cl[j] %in% names(class.handlers))
+            object[[j]] <- class.handlers[[ cl[j] ]](object[[j]])
+    }
+    paste(do.call(function(...) paste(..., sep = " & "), object), "\\\\")
+}
 
 trim <- function(s, leading = TRUE, trailing = TRUE, perl = TRUE, ...) {
     if (leading && trailing)
@@ -39,7 +85,6 @@ trim <- function(s, leading = TRUE, trailing = TRUE, perl = TRUE, ...) {
     else
         gsub("\\s+$", "", s, perl = perl, ...)
 }
-
 
 rmrp <- function(s, pattern, ...) {
     i <- grep(pattern, s, ...)
@@ -74,6 +119,20 @@ TeXunits <- function(from, to, from.unit = NULL) {
     ans
 }
 
+TeXencode <- function(s) {
+    repl <- c("&", "\\&",
+              "%", "\\%",
+              "$", "\\$",
+              "#", "\\#",
+              "_", "\\_",
+              "{", "\\{",
+              "}", "\\}")
+    ii <- seq(1, length(repl), by = 2)
+    for (i in ii) {
+        s <- gsub(repl[i], repl[i+1], s, fixed = TRUE)
+    }
+    s
+}
 
 strexp <- function(s, after, width, fill = " ", at) {
     ns <- nchar(s)
@@ -88,7 +147,6 @@ strexp <- function(s, after, width, fill = " ", at) {
     paste(substr(s, 1L, at - 1L), space,
           substr(s, at, ns), sep = "")    
 }
-
 
 .spaces <- "                                                                                                                                                                                                        "
 spaces <- function(n) {
@@ -133,8 +191,16 @@ btable <- function(x, unit = "cm", before = "", after = "",
            after)
 }
 
+HTMLencode <- function(x) {
+    ii <- seq.int(1, length(.html_entities), 2)
+    Encoding(x) <- "UTF-8"
+    for (i in ii)
+        x <- gsub(.html_entities[i+1], .html_entities[i], x)
+    x
+}
+
 HTMLdecode <- function(x) {
-        ii <- seq.int(1, length(.html_entities), 2)
+    ii <- seq.int(1, length(.html_entities), 2)
     Encoding(x) <- "UTF-8"
     for (i in ii)
         x <- gsub(.html_entities[i], .html_entities[i+1], x)
@@ -2380,3 +2446,39 @@ HTMLdecode <- function(x) {
 Encoding(.html_entities) <- "UTF-8"
 ## Encoding(.html_entities) <- "bytes"
 
+title_case <- function(s, strict = FALSE, ignore = NULL) {
+    spl <- strsplit(s, split = " ")
+    for (i in seq_along(spl)) {
+        if (!is.null(ignore)) {
+            do <- !spl[[i]] %in% ignore
+        } else
+            do <- rep(TRUE, length(spl[[i]]))
+        if (strict)
+            spl[[i]][do] <- tolower(spl[[i]][do])
+        substr(spl[[i]][do],1,1) <- toupper(substr(spl[[i]][do],1,1))
+    }
+    
+    unlist(lapply(spl, paste0, collapse = " "),
+           use.names = !is.null(names(s)))
+}
+
+
+fill_in <- function(s, ..., delim = c("{", "}"), replace.NA = TRUE) {
+    val <- list(...)
+    it <- if (is.null(names(val)))
+              seq_along(val)
+          else
+              names(val)
+    for (i in it) {
+        repl <- if (isTRUE(replace.NA) && is.na(val[[i]]))
+                    "NA"
+                else if (is.character(replace.NA) && is.na(val[[i]]))
+                    replace.NA
+                else
+                    val[[i]]
+
+        s <- gsub(paste0(delim[1L], i, delim[2L]),
+                  repl, s, fixed = TRUE)
+    }
+    s
+}

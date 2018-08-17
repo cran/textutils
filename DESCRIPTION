@@ -1,10 +1,14 @@
 Package: textutils
 Type: Package
 Title: Utilities for Handling Strings and Text
-Version: 0.1-6
-Date: 2016-12-16
-Author: Enrico Schumann
+Version: 0.1-9
+Date: 2018-08-16
+Imports: utils
 Maintainer: Enrico Schumann <es@enricoschumann.net>
+Authors@R: person("Enrico", "Schumann",
+                  role  = c("aut", "cre"),
+                  email = "es@enricoschumann.net",
+                  comment = c(ORCID = "0000-0001-7601-6576"))
 Description: Utilities for handling character vectors
   that store human-readable text (either plain or with
   markup, such as HTML or LaTeX). The package provides,
@@ -14,7 +18,9 @@ Description: Utilities for handling character vectors
   reports); the package also provides generic functions for
   transforming R objects to HTML and to plain text.
 License: GPL-3
+URL: http://enricoschumann.net/R/packages/textutils/
 NeedsCompilation: no
-Packaged: 2016-12-16 22:31:56 UTC; es
+Packaged: 2018-08-17 05:26:55 UTC; SCEN1
+Author: Enrico Schumann [aut, cre] (<https://orcid.org/0000-0001-7601-6576>)
 Repository: CRAN
-Date/Publication: 2016-12-17 00:21:35
+Date/Publication: 2018-08-17 06:00:03 UTC
