@@ -5,7 +5,9 @@ export(
     TeXencode,
     TeXunits,
     btable,
+    dctable,
     fill_in,
+    here,
     latexrule,
     rmrp,
     spaces,
@@ -23,4 +25,7 @@ S3method(toLatex, data.frame)
 S3method(toText, default)
 
 importFrom("utils",
-           "capture.output", "toLatex")
+           "capture.output",
+           "read.table", 
+           "toLatex",
+           "type.convert")

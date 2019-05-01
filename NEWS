@@ -1,3 +1,15 @@
+v0.1-11  (2019-05-01)
+
+  o fix 'HTMLencode' (thanks to Jacqueline Nolis for
+    reporting the error); the function also gains
+    a new argument 'use.iconv'
+
+  o new function 'here'
+
+v0.1-10  (2018-12-14)
+
+  o 'toHTML.data.frame' gains a new argument 'eol'
+
 v0.1-9  (2018-08-16)
 
   o new function 'fill_in'
@@ -19,7 +31,7 @@ v0.1-6  (2016-12-16)
   o CRAN release
 
 v0.1-5  (2016-12-16)
-  
+
   o functions 'char2num' and 'expstr' are removed (for
     the latter, use 'strexp' instead)
 

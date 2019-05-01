@@ -51,14 +51,16 @@ toHTML.data.frame <- function(x, ...,
     ans <- rbind(paste0("<th>", c(if (row.names) "", colnames(x)), "</th>"),
                  cbind(if (row.names) paste0("<td>", row.names(x), "</td>"),
                        apply(x, 2, function(x) paste0("<td>", x, "</td>"))))
-    
+
     paste("<tr>", apply(ans, 1, paste, collapse = ""), "</tr>")
 }
 
-toLatex.data.frame <- function(object, ...,
+toLatex.data.frame <- function(object,
                                row.names = FALSE,
+                               col.handlers = list(),
                                class.handlers = list(),
-                               col.handlers = list()) {
+                               eol = "\\\\",
+                               ...) {
 
     dfnames <- names(object)
     if (any(i <- names(col.handlers) %in% dfnames)) {
@@ -74,7 +76,7 @@ toLatex.data.frame <- function(object, ...,
         if (cl[j] %in% names(class.handlers))
             object[[j]] <- class.handlers[[ cl[j] ]](object[[j]])
     }
-    paste(do.call(function(...) paste(..., sep = " & "), object), "\\\\")
+    paste(do.call(function(...) paste(..., sep = " & "), object), eol)
 }
 
 trim <- function(s, leading = TRUE, trailing = TRUE, perl = TRUE, ...) {
@@ -89,7 +91,7 @@ trim <- function(s, leading = TRUE, trailing = TRUE, perl = TRUE, ...) {
 rmrp <- function(s, pattern, ...) {
     i <- grep(pattern, s, ...)
     if (any(ii <- diff(i) == 1L))
-        s <- s[-i[which(c(FALSE, ii))]]    
+        s <- s[-i[which(c(FALSE, ii))]]
     s
 }
 
@@ -145,7 +147,7 @@ strexp <- function(s, after, width, fill = " ", at) {
     }
     ## if (is.character(at)) {}
     paste(substr(s, 1L, at - 1L), space,
-          substr(s, at, ns), sep = "")    
+          substr(s, at, ns), sep = "")
 }
 
 .spaces <- "                                                                                                                                                                                                        "
@@ -156,13 +158,14 @@ spaces <- function(n) {
 }
 
 
-valign <- function(s, align = "|", insert.at = "<>", replace = TRUE, fixed = TRUE) {
+valign <- function(s, align = "|", insert.at = "<>",
+                   replace = TRUE, fixed = TRUE) {
     pos <- regexpr(align, s, fixed = fixed)
     ns <- spaces(max(pos) - pos)
 
-    for (i in seq_along(s)) 
+    for (i in seq_along(s))
          s[i] <- sub(insert.at, ns[i], s[i], fixed = TRUE)
-    sub(align, "", s, fixed = TRUE)        
+    sub(align, "", s, fixed = TRUE)
 }
 
 
@@ -191,25 +194,101 @@ btable <- function(x, unit = "cm", before = "", after = "",
            after)
 }
 
-HTMLencode <- function(x) {
+.map <- function (x, min = 0, max = 1,
+                    omin = min(x), omax = max(x)) {
+    new.range <- max - min
+    old.range <- omax - omin
+    (new.range * x + min * omax - max * omin)/old.range
+}
+
+
+dctable <- function(x,
+                    unitlength = "1 cm",
+                    width = 5,
+                    y.offset = 0.07,
+                    circle.size = 0.1,
+                    xlim,
+                    na.rm = FALSE) {
+
+    if (missing(xlim))
+        xlim <- range(x, na.rm = na.rm)
+    pic <-
+"\\begin{picture}(%width%,0)
+\\put (%lstart%, %y.offset%) {\\color{gray!90}\\line(1, 0){%d%}}
+\\put (    %x1%, %y.offset%) {\\color{gray!50}\\circle*{%circle.size%}}
+\\put (    %x2%, %y.offset%) {\\color{gray!110}\\circle*{%circle.size%}}
+\\end{picture}
+"
+
+    p <- character(nrow(x))
+    for (i in seq_len(nrow(x))) {
+        if (any(is.na(x[i, ])))
+            next
+
+        d <- diff(x[i, ])
+        p.i <- pic
+        p.i <- fill_in(pic,
+                       width = width,
+                       y.offset = y.offset,
+                       circle.size = circle.size,
+                       x1 = .map(x[i, 1], 0, width,
+                                 xlim[1], xlim[2]),
+                       x2 = .map(x[i, 2], 0, width,
+                                 xlim[1], xlim[2]),
+                       d  = .map(abs(d), 0, width,
+                                 xlim[1], xlim[2]),
+                       lstart =
+                            .map(min(x[i, ]), 0, width,
+                                xlim[1], xlim[2]),
+                       delim = c("%", "%"))
+        p[i] <- p.i
+    }
+
+    p
+}
+
+
+HTMLencode <- function(x, use.iconv = FALSE) {
     ii <- seq.int(1, length(.html_entities), 2)
-    Encoding(x) <- "UTF-8"
-    for (i in ii)
-        x <- gsub(.html_entities[i+1], .html_entities[i], x)
+    entities <- list(char = .html_entities[ii + 1],
+                     ent  = .html_entities[ii])
+    nd <- !duplicated(entities[["char"]])
+    entities[["char"]] <- entities[["char"]][nd]
+    entities[["ent"]]  <- entities[["ent"]][nd]
+    if (use.iconv)
+        iconv(x, from = "", to = "UTF-8")
+    for (i in seq_len(length(entities[["char"]])))
+        if (entities[["char"]][i] == "&")
+            x <- gsub("&(?![a-zA-Z]+;)",
+                      "&amp;",
+                      x,
+                      perl = TRUE)
+        else if (entities[["char"]][i] == ";")
+            ## FIXME: PCRE does not allow backward
+            ## assertions with variable length
+            ## x <- gsub("(?<!&[a-zA-Z]+);",
+            ##           "&semi;",
+            ##           x,
+            ##           perl = TRUE)
+            next
+        else
+            x <- gsub(entities[["char"]][i],
+                      entities[["ent"]][i],
+                      x,
+                      fixed = TRUE)
     x
 }
 
 HTMLdecode <- function(x) {
     ii <- seq.int(1, length(.html_entities), 2)
-    Encoding(x) <- "UTF-8"
     for (i in ii)
-        x <- gsub(.html_entities[i], .html_entities[i+1], x)
+        x <- gsub(.html_entities[i], .html_entities[i+1], x, fixed = TRUE)
     x
 }
 
 ## https://www.w3.org/TR/html5/syntax.html#named-character-references
 .html_entities <- c(
-  "&#38;", "&",
+  ## "&#38;", "&",
   ##
   "&Aacute;","\u00C1",
   "&Aacute","\u00C1",
@@ -2457,7 +2536,7 @@ title_case <- function(s, strict = FALSE, ignore = NULL) {
             spl[[i]][do] <- tolower(spl[[i]][do])
         substr(spl[[i]][do],1,1) <- toupper(substr(spl[[i]][do],1,1))
     }
-    
+
     unlist(lapply(spl, paste0, collapse = " "),
            use.names = !is.null(names(s)))
 }
@@ -2481,4 +2560,29 @@ fill_in <- function(s, ..., delim = c("{", "}"), replace.NA = TRUE) {
                   repl, s, fixed = TRUE)
     }
     s
+}
+
+here <- function(s, drop = TRUE, guess.type = TRUE,
+                 sep = NULL, header = TRUE,
+                 stringsAsFactors = FALSE,
+                 trim = TRUE, ...) {
+    ans <- readLines(con <- textConnection(s))
+    close(con)
+
+    if (drop && ans[len <- length(ans)] == "")
+        ans <- ans[-len]
+    if (drop && ans[1L] == "")
+        ans <- ans[-1L]
+
+    if (is.null(sep) && guess.type)
+        ans <- type.convert(ans, as.is = TRUE)
+    else {
+        ans <- read.table(text = ans,
+                          header = header, sep = sep,
+                          stringsAsFactors = stringsAsFactors,
+                          strip.white = trim,
+                          colClasses = if (guess.type)
+                                           NA else "character", ...)
+    }
+    ans
 }
