@@ -10,6 +10,11 @@ toText.default <- function(x, ...) {
     ans
 }
 
+toText.data.frame <- function(x, ...) {
+    ans <- capture.output(print(x, ...))
+    class(ans) <- "text"
+    ans
+}
 
 print.text <- function(x, ...)
     cat(x, sep = "\n", ...)
@@ -32,9 +37,15 @@ toHTML.text <- function(x, ...){
 
 toHTML.data.frame <- function(x, ...,
                               row.names = FALSE,
+                              col.names = TRUE,
                               class.handlers = list(),
                               col.handlers = list()) {
 
+    row.names.header <- ""
+    if (is.character(row.names)) {
+        row.names.header <- row.names
+        row.names <- TRUE
+    }
     dfnames <- names(x)
     if (any(i <- names(col.handlers) %in% dfnames)) {
         elt <- which(i)
@@ -48,11 +59,14 @@ toHTML.data.frame <- function(x, ...,
         if (cl[j] %in% names(class.handlers))
             x[[j]] <- class.handlers[[ cl[j] ]](x[[j]])
     }
-    ans <- rbind(paste0("<th>", c(if (row.names) "", colnames(x)), "</th>"),
-                 cbind(if (row.names) paste0("<td>", row.names(x), "</td>"),
-                       apply(x, 2, function(x) paste0("<td>", x, "</td>"))))
+    header.row <- c(if (row.names) row.names.header, colnames(x))
+    m <- apply(x, 2, function(x) as.matrix(paste0("<td>", x, "</td>")))
+    if (dim(x)[[1]] == 1L)
+        dim(m) <- dim(x)
+    ans <- rbind(if (col.names) paste0("<th>", header.row, "</th>"),
+                 cbind(if (row.names) paste0("<td>", row.names(x), "</td>"), m))
 
-    paste("<tr>", apply(ans, 1, paste, collapse = ""), "</tr>")
+    paste0("<tr>", apply(ans, 1, paste, collapse = ""), "</tr>")
 }
 
 toLatex.data.frame <- function(object,
@@ -1544,7 +1558,6 @@ HTMLdecode <- function(x, named = TRUE, hex = TRUE, decimal = TRUE) {
   "&nopf;","\uD835\uDD5F",
   "&Not;","\u2AEC",
   "&not;","\u00AC",
-  "&not","\u00AC",
   "&NotCongruent;","\u2262",
   "&NotCupCap;","\u226D",
   "&NotDoubleVerticalBar;","\u2226",
@@ -2552,7 +2565,9 @@ HTMLdecode <- function(x, named = TRUE, hex = TRUE, decimal = TRUE) {
   "&Zscr;","\uD835\uDCB5",
   "&zscr;","\uD835\uDCCF",
   "&zwj;","\u200D",
-  "&zwnj;","\u200C")
+  "&zwnj;","\u200C",
+  "&not", "\u00AC"
+)
 
 Encoding(.html_entities) <- "UTF-8"
 ## Encoding(.html_entities) <- "bytes"
