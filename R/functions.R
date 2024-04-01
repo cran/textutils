@@ -39,7 +39,9 @@ toHTML.data.frame <- function(x, ...,
                               row.names = FALSE,
                               col.names = TRUE,
                               class.handlers = list(),
-                              col.handlers = list()) {
+                              col.handlers = list(),
+                              replace.NA = NULL,
+                              td.id = FALSE) {
 
     row.names.header <- ""
     if (is.character(row.names)) {
@@ -47,6 +49,8 @@ toHTML.data.frame <- function(x, ...,
         row.names <- TRUE
     }
     dfnames <- names(x)
+    isna <- is.na(x)
+
     if (any(i <- names(col.handlers) %in% dfnames)) {
         elt <- which(i)
         for (e in elt)
@@ -58,11 +62,23 @@ toHTML.data.frame <- function(x, ...,
             next
         if (cl[j] %in% names(class.handlers))
             x[[j]] <- class.handlers[[ cl[j] ]](x[[j]])
+
+        if (!is.null(replace.NA))
+            x[[j]][isna[, j]] <- replace.NA
     }
+
     header.row <- c(if (row.names) row.names.header, colnames(x))
-    m <- apply(x, 2, function(x) as.matrix(paste0("<td>", x, "</td>")))
-    if (dim(x)[[1]] == 1L)
-        dim(m) <- dim(x)
+    if (isFALSE(td.id)) {
+        m <- apply(x, 2, function(x) as.matrix(paste0("<td>", x, "</td>")))
+        if (dim(x)[[1]] == 1L)
+            dim(m) <- dim(x)
+    } else if (isTRUE(td.id)) {
+        m <- array("", dim = dim(x))
+        for (j in seq_len(ncol(x)))
+            m[, j] <- paste0("<td id='td_", seq_len(nrow(x)), "_", j, "'>",
+                             x[, j],
+                             "</td>")
+    }
     ans <- rbind(if (col.names) paste0("<th>", header.row, "</th>"),
                  cbind(if (row.names) paste0("<td>", row.names(x), "</td>"), m))
 
@@ -89,6 +105,11 @@ toLatex.data.frame <- function(object,
             next
         if (cl[j] %in% names(class.handlers))
             object[[j]] <- class.handlers[[ cl[j] ]](object[[j]])
+    }
+    if (!isFALSE(row.names)) {
+        nm <- if (is.character(row.names)) row.names else "row.names"
+        object <- cbind(row.names(object), object)
+        colnames(object)[1L] <- nm
     }
     paste(do.call(function(...) paste(..., sep = " & "), object), eol)
 }
@@ -419,4 +440,31 @@ insert <- function(x, values, before.index) {
     ans[ before.index] <- values
     ans[-before.index] <- x
     ans
+}
+
+
+## Non-printable ASCII control characters, i.e. those up to
+## octal 37 except \x09 (\t), \x0A (\n), \x0D (\r).
+## Without the exceptions, character class [:cntrl:] would
+## work as well and would also handle 000.
+.ASCII.control.rx <- "\001|\002|\003|\004|\005|\006|\a|\b|\v|\f|\016|\017|\020|\021|\022|\023|\024|\025|\026|\027|\030|\031|\032|\033|\034|\035|\036|\037|\0177"
+
+
+
+HTMLrm <- function(x, ...) {
+
+    ignore.case = TRUE
+    x <- gsub("<style>.*?</style>", "", x, perl = TRUE, ignore.case = ignore.case)
+    x <- gsub("<head>.*?</head>", "", x, perl = TRUE, ignore.case = ignore.case)
+    x <- gsub("<style>.*?</style>", "", x, perl = TRUE, ignore.case = ignore.case)
+    x <- gsub("<script>.*?</script>", "", x, perl = TRUE, ignore.case = ignore.case)
+    x <- gsub("<!--.*?-->", "", x, perl = TRUE, ignore.case = ignore.case)
+    x <- HTMLdecode(x)
+
+
+    x <- gsub("<a [^>]*?href *= *['\"](.*?)['\"][^>]*>.*?</a>", "\\1", x)
+
+    ## remove leftover <>
+    x <- gsub("<[/]?[^>]+>", "", x, perl = TRUE, ignore.case = ignore.case)
+    x
 }

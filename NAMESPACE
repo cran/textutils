@@ -2,6 +2,7 @@
 export(
     HTMLdecode,
     HTMLencode,
+    HTMLrm,
     TeXencode,
     TeXunits,
     btable,
@@ -20,14 +21,18 @@ export(
     valign
 )
 S3method(print, text)
+
+S3method(toHTML, default)
 S3method(toHTML, data.frame)
 S3method(toHTML, text)
-S3method(toLatex, data.frame)
+
 S3method(toText, default)
 S3method(toText, data.frame)
 
+S3method(toLatex, data.frame)
+
 importFrom("utils",
            "capture.output",
-           "read.table", 
+           "read.table",
            "toLatex",
            "type.convert")
