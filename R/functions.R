@@ -10,6 +10,16 @@ toText.default <- function(x, ...) {
     ans
 }
 
+toText.character <- function(x, ..., sep = ":") {
+    if (is.atomic(x) && !is.null(names(x))) {
+        ans <- paste0(names(x), sep, x)
+        class(ans) <- "text"
+        ans
+    } else {
+        NextMethod()
+    }
+}
+
 toText.data.frame <- function(x, ...) {
     ans <- capture.output(print(x, ...))
     class(ans) <- "text"
@@ -67,7 +77,8 @@ toHTML.data.frame <- function(x, ...,
             x[[j]][isna[, j]] <- replace.NA
     }
 
-    header.row <- c(if (row.names) row.names.header, colnames(x))
+    header.row <- c(if (row.names) row.names.header,
+                    if (is.character(col.names)) col.names else colnames(x))
     if (isFALSE(td.id)) {
         m <- apply(x, 2, function(x) as.matrix(paste0("<td>", x, "</td>")))
         if (dim(x)[[1]] == 1L)
@@ -79,7 +90,8 @@ toHTML.data.frame <- function(x, ...,
                              x[, j],
                              "</td>")
     }
-    ans <- rbind(if (col.names) paste0("<th>", header.row, "</th>"),
+    ans <- rbind(if (is.character(col.names) || col.names)
+                     paste0("<th>", header.row, "</th>"),
                  cbind(if (row.names) paste0("<td>", row.names(x), "</td>"), m))
 
     paste0("<tr>", apply(ans, 1, paste, collapse = ""), "</tr>")
@@ -451,9 +463,9 @@ insert <- function(x, values, before.index) {
 
 
 
-HTMLrm <- function(x, ...) {
+HTMLrm <- function(x, ..., tag.replace = "") {
 
-    ignore.case = TRUE
+    ignore.case <- TRUE
     x <- gsub("<style>.*?</style>", "", x, perl = TRUE, ignore.case = ignore.case)
     x <- gsub("<head>.*?</head>", "", x, perl = TRUE, ignore.case = ignore.case)
     x <- gsub("<style>.*?</style>", "", x, perl = TRUE, ignore.case = ignore.case)
@@ -461,10 +473,53 @@ HTMLrm <- function(x, ...) {
     x <- gsub("<!--.*?-->", "", x, perl = TRUE, ignore.case = ignore.case)
     x <- HTMLdecode(x)
 
-
     x <- gsub("<a [^>]*?href *= *['\"](.*?)['\"][^>]*>.*?</a>", "\\1", x)
 
-    ## remove leftover <>
-    x <- gsub("<[/]?[^>]+>", "", x, perl = TRUE, ignore.case = ignore.case)
+    ## remove all tags like '<something>' and '</something>'
+    x <- gsub("<[/]?[^>]+>", tag.replace, x,
+              perl = TRUE, ignore.case = ignore.case)
     x
+}
+
+
+
+read_HTMLtable <- function(s, unlist1 = FALSE, guess.type = TRUE) {
+
+    tables <- gregexpr("<table.*?</table>", s)
+    tables <- regmatches(s, tables)
+
+    ans <- vector("list", length(tables))
+
+    i <- 0
+    for (table in tables[[1L]]) {
+        i <- i + 1
+        m <- gregexpr("<tr.*?</tr>", table, perl = TRUE)
+        rows <- regmatches(table, m)[[1]]
+
+        h <- gregexpr("<th.*?</th>", rows, perl = TRUE)
+        headers <- regmatches(rows, h)
+
+        H <- headers[[1]]
+        H <- sub("<th[^>]*?>", "", H)
+        H <- sub("</th>", "", H)
+
+
+        n <- gregexpr("<td.*?</td>", rows, perl = TRUE)
+        cells <- regmatches(rows, n)
+
+        fix.cells <- function(s) {
+            txt <- gsub(r"(<a ("[^"]*"|'[^']*'|[^>"'])*>)", "", s, perl = TRUE)
+            txt <- gsub("</a>", "", txt, fixed = TRUE)
+            txt <- sub("<td[^>]*?>", "", txt, perl = TRUE)
+            sub("</td>", "", txt, fixed = TRUE)
+        }
+        res <- lapply(cells, fix.cells)
+        res <- do.call(rbind, res)
+        res <- split(res, col(res))
+        res <- lapply(res, type.convert, as.is = TRUE)
+        res <- list2DF(res)
+        colnames(res) <- H
+        ans[[i]] <- res
+    }
+    ans
 }
